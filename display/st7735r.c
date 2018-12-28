@@ -18,6 +18,10 @@
 #include "driver/ledc.h"
 #include "driver/rtc_io.h"
 
+#if CONFIG_USE_LVGL
+#include "../lvgl/lvgl.h"
+#endif
+
 /*********************
  *      DEFINES
  *********************/
@@ -126,7 +130,7 @@ void st_backlight_percentage_set(int value)
 }
 
 
-#if CONFIG_USE_LVGL_LIBRARY
+#if CONFIG_USE_LVGL
 void st7735r_fill(int32_t x1, int32_t y1, int32_t x2, int32_t y2, lv_color_t color)
 {
     uint8_t data[4];

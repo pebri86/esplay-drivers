@@ -2,7 +2,10 @@ menu "LittleV Graphics Library"
 
 config USE_LVGL_LIBRARY
 	bool "Use LVGL library"
-	default n
+
+config USE_LVGL
+	int
+	default 1 if USE_LVGL_LIBRARY
 
 endmenu
 

@@ -18,6 +18,10 @@
 #include "driver/ledc.h"
 #include "driver/rtc_io.h"
 
+#if CONFIG_USE_LVGL
+#include "../lvgl/lvgl.h"
+#endif
+
 /*********************
  *      DEFINES
  *********************/
@@ -121,7 +125,7 @@ void backlight_percentage_set(int value)
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_NO_WAIT);
 }
 
-#if CONFIG_USE_LVGL_LIBRARY
+#if CONFIG_USE_LVGL
 void ili9431_fill(int32_t x1, int32_t y1, int32_t x2, int32_t y2, lv_color_t color)
 {
 	uint8_t data[4];

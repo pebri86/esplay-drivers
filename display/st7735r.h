@@ -3,8 +3,8 @@
  *
  */
 
-#ifndef ST7735R_H
-#define ST7735R_H
+#ifndef __ST7735R_H__
+#define __ST7735R_H__
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -14,7 +14,7 @@ extern "C" {
 /*********************
  *      INCLUDES
  *********************/
-#if CONFIG_USE_LVGL_LIBRARY
+#if CONFIG_USE_LVGL
 #include "../lvgl/lvgl.h"
 #endif
 
@@ -39,7 +39,7 @@ void st7735r_init(void);
 int is_st_backlight_initialized();
 void st_backlight_percentage_set(int value);
 
-#if CONFIG_USE_LVGL_LIBRARY
+#if CONFIG_USE_LVGL
 void st7735r_fill(int32_t x1, int32_t y1, int32_t x2, int32_t y2, lv_color_t color);
 void st7735r_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_color_t * color_map);
 #endif

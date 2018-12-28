@@ -3,8 +3,8 @@
  *
  */
 
-#ifndef ILI9341_H
-#define ILI9341_H
+#ifndef __ILI9341_H__
+#define __ILI9341_H__
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -13,9 +13,9 @@ extern "C" {
 
 /*********************
  *      INCLUDES
- *********************/	
-#if CONFIG_USE_LVGL_LIBRARY
-#include "../lvgl/lvgl.h"
+ *********************/
+#if CONFIG_USE_LVGL
+#include "../../lvgl/lvgl.h"
 #endif
 
 /*********************
@@ -38,7 +38,7 @@ int is_backlight_initialized();
 void backlight_percentage_set(int value);
 void ili9341_init(void);
 
-#if CONFIG_USE_LVGL_LIBRARY
+#if CONFIG_USE_LVGL
 void ili9341_fill(int32_t x1, int32_t y1, int32_t x2, int32_t y2, lv_color_t color);
 void ili9341_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_color_t * color_map);
 #endif
