@@ -5,6 +5,35 @@
 #include "driver/i2s.h"
 #include "driver/rtc_io.h"
 
+static float Volume = 0.5f;
+static volume_level volumeLevel = VOLUME_LEVEL3;
+static int volumeLevels[] = {0, 125, 250, 500, 1000};
+
+volume_level audio_volume_get()
+{
+    return volumeLevel;
+}
+
+void audio_volume_set(volume_level value)
+{
+    if (value >= VOLUME_LEVEL_COUNT)
+    {
+        printf("audio_volume_set: value out of range (%d)\n", value);
+        abort();
+    }
+
+    volumeLevel = value;
+    Volume = (float)volumeLevels[value] * 0.001f;
+}
+
+void audio_volume_change()
+{
+    int level = (volumeLevel + 1) % VOLUME_LEVEL_COUNT;
+    audio_volume_set(level);
+
+    // settings_Volume_set(level);
+}
+
 void audio_init(int sample_rate)
 {
     printf("%s: sample_rate=%d\n", __func__, sample_rate);
@@ -32,60 +61,20 @@ void audio_init(int sample_rate)
 
 void audio_submit(short* stereoAudioBuffer, int frameCount)
 {
-    
+
     short currentAudioSampleCount = frameCount * 2;
-/*
-    // Convert for built in DAC
-    for (short i = 0; i < currentAudioSampleCount; i += 2)
-    {
-         uint16_t dac0;
-         uint16_t dac1;
-
-         // Down mix stero to mono
-         int32_t sample = stereoAudioBuffer[i];
-         sample += stereoAudioBuffer[i + 1];
-         sample >>= 1;
-         // Normalize
-         const float sn = (float)sample / 0x8000;
-         // Scale
-         const int magnitude = 127 + 127;
-         const float range = magnitude  * sn;
-
-         // Convert to differential output
-         if (range > 127)
-         {
-             dac1 = (range - 127);
-             dac0 = 127;
-         }
-         else if (range < -127)
-         {
-             dac1  = (range + 127);
-             dac0 = -127;
-         }
-         else
-         {
-             dac1 = 0;
-             dac0 = range;
-         }
-         dac0 += 0x80;
-         dac1 = 0x80 - dac1;
-
-         dac0 <<= 8;
-         dac1 <<= 8;
-
-         stereoAudioBuffer[i] = (int16_t)dac1;
-         stereoAudioBuffer[i + 1] = (int16_t)dac0;
-    }
-*/    
+   
     for (short i = 0; i < currentAudioSampleCount; ++i)
     {
-         int sample = stereoAudioBuffer[i];
-         if (sample > 32767)
-             sample = 32767;
-         else if (sample < -32768)
-             sample = -32767;
+        int sample = stereoAudioBuffer[i] * Volume;
+        if (sample > 32767)
+            sample = 32767;
+        else if (sample < -32768)
+            sample = -32767;
 
-         stereoAudioBuffer[i] = (short)sample;
+        sample  = sample + 0x8000;
+
+        stereoAudioBuffer[i] = (short)sample;
     }
 
     int len = currentAudioSampleCount * sizeof(int16_t);
