@@ -22,7 +22,7 @@
 
 /*ST7735 can't handle correctly at 40 Mhz speed*/
 #if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-#define SPI_CLOCK_SPEED 30000000
+#define SPI_CLOCK_SPEED 26000000
 #endif
 
 /**********************

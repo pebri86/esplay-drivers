@@ -126,6 +126,111 @@ void set_rom_partition_settings(int8_t value)
     nvs_close(my_handle);
 }
 
+char* system_util_GetFileName(const char* path)
+{
+    int length = strlen(path);
+    int fileNameStart = length;
+
+    if (fileNameStart < 1) abort();
+
+    while (fileNameStart > 0)
+    {
+        if (path[fileNameStart] == '/')
+        {
+            ++fileNameStart;
+            break;
+        }
+
+        --fileNameStart;
+    }
+
+    int size = length - fileNameStart + 1;
+
+    char* result = malloc(size);
+    if (!result) abort();
+
+    result[size - 1] = 0;
+    for (int i = 0; i < size - 1; ++i)
+    {
+        result[i] = path[fileNameStart + i];
+    }
+
+    //printf("GetFileName: result='%s'\n", result);
+
+    return result;
+}
+
+char* system_util_GetFileExtenstion(const char* path)
+{
+    // Note: includes '.'
+    int length = strlen(path);
+    int extensionStart = length;
+
+    if (extensionStart < 1) abort();
+
+    while (extensionStart > 0)
+    {
+        if (path[extensionStart] == '.')
+        {
+            break;
+        }
+
+        --extensionStart;
+    }
+
+    int size = length - extensionStart + 1;
+
+    char* result = malloc(size);
+    if (!result) abort();
+
+    result[size - 1] = 0;
+    for (int i = 0; i < size - 1; ++i)
+    {
+        result[i] = path[extensionStart + i];
+    }
+
+    //printf("GetFileExtenstion: result='%s'\n", result);
+
+    return result;
+}
+
+char* system_util_GetFileNameWithoutExtension(const char* path)
+{
+    char* fileName = system_util_GetFileName(path);
+
+    int length = strlen(fileName);
+    int extensionStart = length;
+
+    if (extensionStart < 1) abort();
+
+    while (extensionStart > 0)
+    {
+        if (fileName[extensionStart] == '.')
+        {
+            break;
+        }
+
+        --extensionStart;
+    }
+
+    int size = extensionStart + 1;
+
+    char* result = malloc(size);
+    if (!result) abort();
+
+    result[size - 1] = 0;
+    for (int i = 0; i < size - 1; ++i)
+    {
+        result[i] = fileName[i];
+    }
+
+    free(fileName);
+
+    //printf("GetFileNameWithoutExtension: result='%s'\n", result);
+
+    return result;
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
