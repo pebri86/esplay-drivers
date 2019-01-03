@@ -50,7 +50,7 @@ void system_sleep()
     // Isolate GPIO12 pin from external circuits. This is needed for modules
     // which have an external pull-up resistor on GPIO12 (such as ESP32-WROVER)
     // to minimize current consumption.
-    rtc_gpio_isolate(GPIO_NUM_12);
+    //rtc_gpio_isolate(GPIO_NUM_12);
 #if 1
     //rtc_gpio_isolate(GPIO_NUM_34);
     //rtc_gpio_isolate(GPIO_NUM_35);
