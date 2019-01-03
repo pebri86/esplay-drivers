@@ -136,7 +136,7 @@ config GAMEPAD_B_CUST
 	int "Gamepad B GPIO pin number"
 	depends on HW_CUSTOM
 	range 0 33
-	default 4
+	default 13
 
 config GAMEPAD_START_CUST
 	int "Gamepad START GPIO pin number"
@@ -188,7 +188,7 @@ config GAMEPAD_A
 config GAMEPAD_B
 	int
     default GAMEPAD_B_CUST if HW_CUSTOM
-	default 4 if ESP_MICRO_NES_HW
+	default 13 if ESP_MICRO_NES_HW
 
 config GAMEPAD_START
 	int

@@ -44,6 +44,24 @@ static const int DUTY_MAX = 0x1fff;
 static const int LCD_BACKLIGHT_ON_VALUE = 1;
 static bool isBackLightIntialized = false;
 
+#define TFT_CMD_SWRESET	0x01
+#define TFT_CMD_SLEEP 0x10
+#define TFT_CMD_DISPLAY_OFF 0x28
+
+#define MADCTL_MY  0x80
+#define MADCTL_MX  0x40
+#define MADCTL_MV  0x20
+#define MADCTL_ML  0x10
+#define MADCTL_MH 0x04
+#define TFT_RGB_BGR 0x08
+
+DRAM_ATTR static const lcd_init_cmd_t ili_sleep_cmds[] = {
+    {TFT_CMD_SWRESET, {0}, 0x80},
+    {TFT_CMD_DISPLAY_OFF, {0}, 0x80},
+    {TFT_CMD_SLEEP, {0}, 0x80},
+    {0, {0}, 0xff}
+};
+
 /**********************
  *      MACROS
  **********************/
@@ -221,6 +239,88 @@ void ili9341_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_colo
 
 }
 #endif
+
+void ili9341_poweroff()
+{
+    // // Drain SPI queue
+    // xTaskToNotify = 0;
+    //
+     esp_err_t err = ESP_OK;
+    //
+    // while(err == ESP_OK)
+    // {
+    //     spi_transaction_t* trans_desc;
+    //     err = spi_device_get_trans_result(spi, &trans_desc, 0);
+    //
+    //     printf("ili9341_poweroff: removed pending transfer.\n");
+    // }
+
+
+    // fade off backlight
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, (LCD_BACKLIGHT_ON_VALUE) ? 0 : DUTY_MAX, 100);
+    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
+
+
+    // Disable LCD panel
+    int cmd = 0;
+    while (ili_sleep_cmds[cmd].databytes != 0xff)
+    {
+        //printf("ili9341_poweroff: cmd=%d, ili_sleep_cmds[cmd].cmd=0x%x, ili_sleep_cmds[cmd].databytes=0x%x\n",
+        //    cmd, ili_sleep_cmds[cmd].cmd, ili_sleep_cmds[cmd].databytes);
+
+        ili9341_send_cmd(ili_sleep_cmds[cmd].cmd);
+        ili9341_send_data(ili_sleep_cmds[cmd].data, ili_sleep_cmds[cmd].databytes & 0x7f);
+        if (ili_sleep_cmds[cmd].databytes & 0x80)
+        {
+            vTaskDelay(100 / portTICK_RATE_MS);
+        }
+        cmd++;
+    }
+
+
+    err = rtc_gpio_init(ILI9341_BCKL);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+    err = rtc_gpio_set_direction(ILI9341_BCKL, RTC_GPIO_MODE_OUTPUT_ONLY);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+    err = rtc_gpio_set_level(ILI9341_BCKL, LCD_BACKLIGHT_ON_VALUE ? 0 : 1);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+}
+
+void ili9341_prepare()
+{
+    // Return use of backlight pin
+    esp_err_t err = rtc_gpio_deinit(ILI9341_BCKL);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+#if 0
+    // Disable backlight
+    err = gpio_set_direction(ILI9341_BCKL, GPIO_MODE_OUTPUT);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+    err = gpio_set_level(ILI9341_BCKL, LCD_BACKLIGHT_ON_VALUE ? 0 : 1);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+#endif
+}
 
 /**********************
  *   STATIC FUNCTIONS

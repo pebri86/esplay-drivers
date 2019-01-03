@@ -219,7 +219,7 @@ bool lv_keypad_read(lv_indev_data_t *data)
     }
     else if(gamepad_state.values[GAMEPAD_INPUT_SELECT] == 1)
     {
-        printf("ENTER\n");
+        printf("SELECT\n");
         data->state = LV_INDEV_STATE_PR;
         data->key = LV_GROUP_KEY_NEXT;
     }

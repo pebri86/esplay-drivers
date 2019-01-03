@@ -36,6 +36,28 @@ void set_display_brightness(int percent)
 #endif
 }
 
+void display_prepare(int percent)
+{
+#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
+    ili9341_prepare();
+#endif
+
+#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
+    st7735r_prepare();
+#endif
+}
+
+void display_poweroff(int percent)
+{
+#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
+    ili9341_poweroff();
+#endif
+
+#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
+    st7735r_poweroff();
+#endif
+}
+
 static uint16_t averageSamples(const uint8_t * data[], int dx, int dy)
 {
     uint16_t a,b;

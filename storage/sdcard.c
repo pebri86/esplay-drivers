@@ -1,6 +1,6 @@
 #include "sdcard.h"
 
-//#include "esp_err.h"
+#include "esp_err.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "driver/sdmmc_host.h"
@@ -19,10 +19,7 @@
 #define SD_PIN_NUM_CLK  18
 #define SD_PIN_NUM_CS 4
 
-
 static bool isOpen = false;
-
-
 
 inline static void swap(char** a, char** b)
 {
@@ -183,7 +180,7 @@ esp_err_t sdcard_open(const char* base_path)
     else
     {
         sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    	host.slot = VSPI_HOST; // HSPI_HOST;
+    	host.slot = HSPI_HOST; // HSPI_HOST;
     	//host.max_freq_khz = SDMMC_FREQ_HIGHSPEED; //10000000;
         host.max_freq_khz = SDMMC_FREQ_DEFAULT;
 
@@ -192,7 +189,7 @@ esp_err_t sdcard_open(const char* base_path)
     	slot_config.gpio_mosi = (gpio_num_t)SD_PIN_NUM_MOSI;
     	slot_config.gpio_sck  = (gpio_num_t)SD_PIN_NUM_CLK;
     	slot_config.gpio_cs = (gpio_num_t)SD_PIN_NUM_CS;
-    	//slot_config.dma_channel = 2;
+    	slot_config.dma_channel = 2;
 
     	// Options for mounting the filesystem.
     	// If format_if_mount_failed is set to true, SD card will be partitioned and
@@ -242,6 +239,12 @@ esp_err_t sdcard_close()
         {
             printf("sdcard_close: esp_vfs_fat_sdmmc_unmount failed (%d)\n", ret);
     	}
+        else
+        {
+            isOpen = false;
+        }
+
+
     }
 
     return ret;
@@ -346,7 +349,7 @@ char* sdcard_create_savefile_path(const char* base_path, const char* fileName)
 
     //printf("%s: extension='%s'\n", __func__, extension);
 
-    const char* DATA_PATH = "/gnuboy/data/";
+    const char* DATA_PATH = "/esplay/data/";
     const char* SAVE_EXTENSION = ".sav";
 
     size_t savePathLength = strlen(base_path) + strlen(DATA_PATH) + strlen(extension) + 1 + strlen(fileName) + strlen(SAVE_EXTENSION) + 1;

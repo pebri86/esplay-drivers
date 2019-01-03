@@ -32,6 +32,8 @@ void display_init();
 void write_nes_frame(const uint8_t * data[]);
 void write_gb_frame(const uint16_t * data);
 void set_display_brightness(int percent);
+void display_prepare();
+void display_poweroff();
 
 #ifdef __cplusplus
 }

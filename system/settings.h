@@ -33,6 +33,12 @@ void set_rom_partition_settings(int8_t value);
 char* system_util_GetFileName(const char* path);
 char* system_util_GetFileExtenstion(const char* path);
 char* system_util_GetFileNameWithoutExtension(const char* path);
+int8_t get_menu_flag_settings();
+void set_menu_flag_settings(int8_t value);
+int8_t get_volume_settings();
+void set_volume_settings(int8_t value);
+char* get_rom_name_settings();
+void set_rom_name_settings(char* value);
 
 /**********************
  *      MACROS

@@ -33,6 +33,10 @@
 #define MADCTL_BGR      0x08
 #define MADCTL_MH       0x04
 
+#define TFT_CMD_SWRESET 0x01
+#define TFT_CMD_SLEEP 0x11
+#define TFT_CMD_DISPLAY_OFF 0x28
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -50,6 +54,13 @@ static void backlight_init();
 static const int DUTY_MAX = 0x1fff;
 static const int LCD_BACKLIGHT_ON_VALUE = 1;
 static bool isBackLightIntialized = false;
+
+DRAM_ATTR static const lcd_init_cmd_t st_sleep_cmds[] = {
+    {TFT_CMD_SWRESET, {0}, 0x80},
+    {TFT_CMD_DISPLAY_OFF, {0}, 0x80},
+    {TFT_CMD_SLEEP, {0}, 0x80},
+    {0, {0}, 0xff}
+};
 
 /**********************
  *      MACROS
@@ -223,6 +234,89 @@ void st7735r_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_colo
 }
 #endif
 
+void st7735r_poweroff()
+{
+    // // Drain SPI queue
+    // xTaskToNotify = 0;
+    //
+     esp_err_t err = ESP_OK;
+    //
+    // while(err == ESP_OK)
+    // {
+    //     spi_transaction_t* trans_desc;
+    //     err = spi_device_get_trans_result(spi, &trans_desc, 0);
+    //
+    //     printf("st7735r_poweroff: removed pending transfer.\n");
+    // }
+
+
+    // fade off backlight
+    ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, (LCD_BACKLIGHT_ON_VALUE) ? 0 : DUTY_MAX, 100);
+    ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
+
+
+    // Disable LCD panel
+    int cmd = 0;
+    while (st_sleep_cmds[cmd].databytes != 0xff)
+    {
+        //printf("st7735r_poweroff: cmd=%d, st_sleep_cmds[cmd].cmd=0x%x, st_sleep_cmds[cmd].databytes=0x%x\n",
+        //    cmd, st_sleep_cmds[cmd].cmd, st_sleep_cmds[cmd].databytes);
+
+        st7735r_send_cmd(st_sleep_cmds[cmd].cmd);
+        st7735r_send_data(st_sleep_cmds[cmd].data, st_sleep_cmds[cmd].databytes & 0x7f);
+        if (st_sleep_cmds[cmd].databytes & 0x80)
+        {
+            vTaskDelay(100 / portTICK_RATE_MS);
+        }
+        cmd++;
+    }
+
+/*
+    err = rtc_gpio_init(ST7735R_BCKL);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+    err = rtc_gpio_set_direction(ST7735R_BCKL, RTC_GPIO_MODE_OUTPUT_ONLY);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+    err = rtc_gpio_set_level(ST7735R_BCKL, LCD_BACKLIGHT_ON_VALUE ? 0 : 1);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+    */
+}
+
+void st7735r_prepare()
+{
+    // Return use of backlight pin
+    esp_err_t err = rtc_gpio_deinit(ST7735R_BCKL);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+#if 0
+    // Disable backlight
+    err = gpio_set_direction(ST7735R_BCKL, GPIO_MODE_OUTPUT);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+
+    err = gpio_set_level(ST7735R_BCKL, LCD_BACKLIGHT_ON_VALUE ? 0 : 1);
+    if (err != ESP_OK)
+    {
+        abort();
+    }
+#endif
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -281,3 +375,5 @@ static void backlight_init()
 
     printf("Backlight initialization done.\n");
 }
+
+

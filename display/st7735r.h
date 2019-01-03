@@ -36,6 +36,8 @@ extern "C" {
  **********************/
 
 void st7735r_init(void);
+void st7735r_prepare();
+void st7735r_poweroff();
 int is_st_backlight_initialized();
 void st_backlight_percentage_set(int value);
 
