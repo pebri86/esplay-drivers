@@ -6,7 +6,7 @@
 #include "driver/rtc_io.h"
 
 static float Volume = 0.5f;
-static volume_level volumeLevel = VOLUME_LEVEL3;
+static volume_level volumeLevel = VOLUME_LEVEL1;
 static int volumeLevels[] = {0, 125, 250, 500, 1000};
 
 volume_level audio_volume_get()
@@ -23,7 +23,7 @@ void audio_volume_set(volume_level value)
     }
 
     volumeLevel = value;
-    Volume = (float)volumeLevels[value] * 0.001f;
+    Volume = (float)volumeLevels[value] * 0.0001f;
 }
 
 void audio_volume_change()
@@ -50,7 +50,7 @@ void audio_init(int sample_rate)
         //.dma_buf_len = 1472 / 2,  // (368samples * 2ch * 2(short)) = 1472
         .dma_buf_len = 512,  // (416samples * 2ch * 2(short)) = 1664
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, //Interrupt level 1
-        .use_apll = 0 //1
+        .use_apll = false //1
     };
 
     i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
@@ -62,17 +62,17 @@ void audio_init(int sample_rate)
 void audio_submit(short* stereoAudioBuffer, int frameCount)
 {
 
-    short currentAudioSampleCount = frameCount * 2;
+    short currentAudioSampleCount = frameCount*2;
    
     for (short i = 0; i < currentAudioSampleCount; ++i)
     {
         int sample = stereoAudioBuffer[i] * Volume;
         if (sample > 32767)
             sample = 32767;
-        else if (sample < -32768)
+        else if (sample < -32767)
             sample = -32767;
-
-        sample  = sample + 0x8000;
+        
+        sample  = sample ^ 0x8000u;
 
         stereoAudioBuffer[i] = (short)sample;
     }

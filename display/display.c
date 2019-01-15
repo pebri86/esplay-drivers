@@ -98,7 +98,7 @@ void write_nes_frame(const uint8_t * data[])
 //Averages four pixels into one
 int getAvgPix(uint16_t* bufs, int pitch, int x, int y) {
     int col;
-    if (x<0 || x>=160) return 0;
+    if (x<0 || x>=LCD_WIDTH) return 0;
     //16-bit: E79C
     //15-bit: 739C
     col=(bufs[x+(y*(pitch>>1))]&0xE79C)>>2;
@@ -121,7 +121,7 @@ void write_gb_frame(const uint16_t * data)
             }
             else
             {
-                uint16_t sample = getAvgPix(data, 160*2, x*GB_FRAME_WIDTH/LCD_WIDTH, y*GB_FRAME_HEIGHT/LCD_HEIGHT);
+                uint16_t sample = getAvgPix(data, GB_FRAME_WIDTH*2, x*GB_FRAME_WIDTH/LCD_WIDTH, y*GB_FRAME_HEIGHT/LCD_HEIGHT);
                 line[calc_line][x]=((sample >> 8) | ((sample) << 8));
             }
         }
