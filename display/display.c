@@ -99,14 +99,25 @@ void write_nes_frame(const uint8_t * data[])
 //Averages four pixels into one
 static int getAvgPix(uint16_t* bufs, int pitch, int x, int y) 
 {
-    int col;
+    int col, p1, p2, p3, p4, d1, d2;
     if (x<0 || x>=LCD_WIDTH) return 0;
     //16-bit: E79C
     //15-bit: 739C
+    /*
     col=(bufs[x+(y*(pitch>>1))]&0xE79C)>>2;
     col+=(bufs[(x+1)+(y*(pitch>>1))]&0xE79C)>>2;
     col+=(bufs[x+((y+1)*(pitch>>1))]&0xE79C)>>2;
     col+=(bufs[(x+1)+((y+1)*(pitch>>1))]&0xE79C)>>2;
+    */    
+    p1=bufs[x+(y*(pitch))];
+    p2=bufs[(x+1)+(y*(pitch))];
+    p3=bufs[x+((y+1)*(pitch))];
+    p4=bufs[(x+1)+((y+1)*(pitch))];
+
+    d1 = AVERAGE(p1,p2);
+    d2 = AVERAGE(p3,p4);
+    col = AVERAGE(d1,d2);
+
     return col&0xffff;
 }
 
@@ -124,9 +135,9 @@ static uint16_t colordiff(uint16_t a, uint16_t b)
   char g1 = (b >> 5) & 0x3f;
   char b1 = (b) & 0x1f;
 
-  uint16_t rv = r0 - r1;
-  uint16_t gv = g0 - g1;
-  uint16_t bv = b0 - b1;
+  uint16_t rv = ((r1 - r0) >> 1) + r0;
+  uint16_t gv = ((g1 - g0) >> 1) + g0;
+  uint16_t bv = ((b1 - b0) >> 1) + b0;
 
   return (rv << 11) | (gv << 5) | (bv);
 }
@@ -134,13 +145,13 @@ static uint16_t colordiff(uint16_t a, uint16_t b)
 //scaled up alghoritm
 static int getAvgPixScaledUp(uint16_t* bufs, int pitch, int x, int y) 
 {
-    int col, p, p1, p2, p3, d1, d2, d3, d4, min;
-    p = (bufs[(y*(pitch>>1)) + x]&0xE79C)>>2;
+    uint16_t col, p, p1, p2, p3, d1, d2, d3, d4, min;
+    p = bufs[(y*(pitch)) + x];
 
     /* target pixel in North-West quadrant */
-    p1 = (bufs[((y-1)*(pitch>>1)) + x]&0xE79C)>>2;     /* neighbour to the North */
-    p2 = (bufs[(y*(pitch>>1)) + (x-1)]&0xE79C)>>2;      /* neighbour to the West */
-    p3 = (bufs[((y-1)*(pitch>>1)) + (x-1)]&0xE79C)>>2;  /* neighbour to the North-West */
+    p1 = bufs[((y-1)*(pitch)) + x];     /* neighbour to the North */
+    p2 = bufs[(y*(pitch)) + (x-1)];      /* neighbour to the West */
+    p3 = bufs[((y-1)*(pitch)) + (x-1)];  /* neighbour to the North-West */
     d1 = ABS( colordiff(p, p1) );
     d2 = ABS( colordiff(p, p2) );
     d3 = ABS( colordiff(p, p3) );
@@ -156,59 +167,87 @@ static int getAvgPixScaledUp(uint16_t* bufs, int pitch, int x, int y)
     if (min == d1)
     {
         /* North */
-        col = p;
-        col += p1;
+        col = AVERAGE(p,p1);
     }
     else if (min == d2)
     {
         /* West */
-        col = p;
-        col += p2;
+        col = AVERAGE(p,p2);
     }
     else if (min == d3)
     {
         /* North-West */
-        col = p;
-        col += p3;
+        col = AVERAGE(p,p3);
     }
     else /* min == d4 */
     {
         /* North to West */
-        col = p;
-        col += p1;
-        col += p2;
+        col = AVERAGE(p, AVERAGE(p1,p2));
     }
 
     return col&0xffff;
 }
 
-void write_gb_frame(const uint16_t * data)
+void write_gb_frame(const uint16_t * data, bool scale)
 {
     short x,y;
     int sending_line=-1;
     int calc_line=0;
-    for (y=0; y<LCD_HEIGHT; y++) {
-        for (x=0; x<LCD_WIDTH; x++) {
-            if (data == NULL)
-            {
+
+    if (data == NULL)
+    {
+        for (y=0; y<LCD_HEIGHT; y++) {
+            for (x=0; x<LCD_WIDTH; x++) {
                 line[calc_line][x] = 0;
             }
-            else
-            {
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-                uint16_t sample = getAvgPix(data, GB_FRAME_WIDTH*2, x*GB_FRAME_WIDTH/LCD_WIDTH, y*GB_FRAME_HEIGHT/LCD_HEIGHT);
-#elif (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
-                uint16_t sample = getAvgPixScaledUp(data, GB_FRAME_WIDTH*2, x*GB_FRAME_WIDTH/LCD_WIDTH, y*GB_FRAME_HEIGHT/LCD_HEIGHT);
-#endif
-                line[calc_line][x]=((sample >> 8) | ((sample) << 8));
+            if (sending_line!=-1) send_line_finish();
+            sending_line=calc_line;
+            calc_line=(calc_line==1)?0:1;
+            send_lines_ext(y, 0, LCD_WIDTH, line[sending_line]);
             }
-        }
-        if (sending_line!=-1) send_line_finish();
-        sending_line=calc_line;
-        calc_line=(calc_line==1)?0:1;
-        send_lines(y, LCD_WIDTH, line[sending_line]);
+        send_line_finish(); 
     }
-    send_line_finish();
+    else
+    {
+        if (scale)
+        {            
+            int outputHeight = LCD_HEIGHT;
+            int outputWidth = GB_FRAME_WIDTH + (LCD_HEIGHT - GB_FRAME_HEIGHT);
+            int xpos = (LCD_WIDTH - outputWidth) / 2;
+            for (y=1; y<outputHeight; y++) 
+            {
+                for (x=0; x<outputWidth; x++) 
+                {
+                    uint16_t sample = getAvgPix(data, GB_FRAME_WIDTH, x*GB_FRAME_WIDTH/outputWidth, y*GB_FRAME_HEIGHT/outputHeight);
+                    line[calc_line][x]=((sample >> 8) | ((sample) << 8));
+                }
+                if (sending_line!=-1) send_line_finish();
+                sending_line=calc_line;
+                calc_line=(calc_line==1)?0:1;
+                send_lines_ext(y, xpos, outputWidth, line[sending_line]);
+            }
+            send_line_finish();
+        }
+        else
+        {
+            int ypos = (LCD_HEIGHT - GB_FRAME_HEIGHT)/2;
+            int xpos = (LCD_WIDTH - GB_FRAME_WIDTH)/2;
+
+            for (y=0; y<GB_FRAME_HEIGHT; y++) 
+            {
+                for (x=0; x<GB_FRAME_WIDTH; x++) 
+                {
+                    uint16_t sample = data[(y*(GB_FRAME_WIDTH)) + x];
+                    line[calc_line][x]=((sample >> 8) | ((sample) << 8));
+                }
+                if (sending_line!=-1) send_line_finish();
+                sending_line=calc_line;
+                calc_line=(calc_line==1)?0:1;
+                send_lines_ext(y+ypos, xpos, GB_FRAME_WIDTH, line[sending_line]);
+            }
+            send_line_finish();
+        }
+    }
 }
 
 void display_init()

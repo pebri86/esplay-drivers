@@ -24,8 +24,8 @@ extern "C" {
 #define ST7735R_HOR_RES	160
 #define ST7735R_VER_RES	128
 
-#define ST7735R_RST  CONFIG_HW_LCD_RESET_GPIO
-#define ST7735R_BCKL CONFIG_HW_LCD_BL_GPIO
+#define ST7735R_RST  	CONFIG_HW_LCD_RESET_GPIO
+#define ST7735R_BCKL 	CONFIG_HW_LCD_BL_GPIO
 
 /**********************
  *      TYPEDEFS
@@ -34,7 +34,6 @@ extern "C" {
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
-
 void st7735r_init(void);
 void st7735r_prepare();
 void st7735r_poweroff();

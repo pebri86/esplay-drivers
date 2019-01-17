@@ -38,6 +38,7 @@ extern "C" {
 void disp_spi_init(void);
 void disp_spi_send(uint8_t * data, uint16_t length, int dc);
 void send_lines(int ypos, int width, uint16_t *linedata);
+void send_lines_ext(int ypos, int xpos, int width, uint16_t *linedata);
 void send_line_finish(void);
 
 /**********************

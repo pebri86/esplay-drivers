@@ -15,7 +15,7 @@ extern "C" {
  *      INCLUDES
  *********************/
 #if CONFIG_USE_LVGL
-#include "../../lvgl/lvgl.h"
+#include "../lvgl/lvgl.h"
 #endif
 
 /*********************

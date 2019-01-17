@@ -25,7 +25,16 @@
 /*********************
  *      DEFINES
  *********************/
+#define MADCTL_MY  0x80
+#define MADCTL_MX  0x40
+#define MADCTL_MV  0x20
+#define MADCTL_ML  0x10
+#define MADCTL_MH 0x04
+#define TFT_RGB_BGR 0x08
 
+#define TFT_CMD_SWRESET	0x01
+#define TFT_CMD_SLEEP 0x10
+#define TFT_CMD_DISPLAY_OFF 0x28
 /**********************
  *      TYPEDEFS
  **********************/
@@ -43,17 +52,6 @@ static void backlight_init();
 static const int DUTY_MAX = 0x1fff;
 static const int LCD_BACKLIGHT_ON_VALUE = 1;
 static bool isBackLightIntialized = false;
-
-#define TFT_CMD_SWRESET	0x01
-#define TFT_CMD_SLEEP 0x10
-#define TFT_CMD_DISPLAY_OFF 0x28
-
-#define MADCTL_MY  0x80
-#define MADCTL_MX  0x40
-#define MADCTL_MV  0x20
-#define MADCTL_ML  0x10
-#define MADCTL_MH 0x04
-#define TFT_RGB_BGR 0x08
 
 DRAM_ATTR static const lcd_init_cmd_t ili_sleep_cmds[] = {
     {TFT_CMD_SWRESET, {0}, 0x80},
@@ -83,7 +81,7 @@ void ili9341_init(void)
 		{0xC1, {0x11}, 1},			/*Power control */
 		{0xC5, {0x35, 0x3E}, 2},	/*VCOM control*/
 		{0xC7, {0xBE}, 1},			/*VCOM control*/
-		{0x36, {0x28}, 1},			/*Memory Access Control*/
+		{0x36, {MADCTL_MY | MADCTL_MX | MADCTL_MV | TFT_RGB_BGR}, 1},			/*Memory Access Control*/
 		{0x3A, {0x55}, 1},			/*Pixel Format Set*/
 		{0xB1, {0x00, 0x1B}, 2},
 		{0xF2, {0x08}, 1},
@@ -228,7 +226,6 @@ void ili9341_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_colo
 	while(size > ILI9341_HOR_RES) {
 
 		ili9341_send_data((void*)color_map, ILI9341_HOR_RES * 2);
-		//vTaskDelay(10 / portTICK_PERIOD_MS);
 		size -= ILI9341_HOR_RES;
 		color_map += ILI9341_HOR_RES;
 	}
@@ -242,19 +239,7 @@ void ili9341_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_colo
 
 void ili9341_poweroff()
 {
-    // // Drain SPI queue
-    // xTaskToNotify = 0;
-    //
-     esp_err_t err = ESP_OK;
-    //
-    // while(err == ESP_OK)
-    // {
-    //     spi_transaction_t* trans_desc;
-    //     err = spi_device_get_trans_result(spi, &trans_desc, 0);
-    //
-    //     printf("ili9341_poweroff: removed pending transfer.\n");
-    // }
-
+    esp_err_t err = ESP_OK;
 
     // fade off backlight
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, (LCD_BACKLIGHT_ON_VALUE) ? 0 : DUTY_MAX, 100);
@@ -265,9 +250,6 @@ void ili9341_poweroff()
     int cmd = 0;
     while (ili_sleep_cmds[cmd].databytes != 0xff)
     {
-        //printf("ili9341_poweroff: cmd=%d, ili_sleep_cmds[cmd].cmd=0x%x, ili_sleep_cmds[cmd].databytes=0x%x\n",
-        //    cmd, ili_sleep_cmds[cmd].cmd, ili_sleep_cmds[cmd].databytes);
-
         ili9341_send_cmd(ili_sleep_cmds[cmd].cmd);
         ili9341_send_data(ili_sleep_cmds[cmd].data, ili_sleep_cmds[cmd].databytes & 0x7f);
         if (ili_sleep_cmds[cmd].databytes & 0x80)

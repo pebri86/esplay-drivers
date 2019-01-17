@@ -236,32 +236,16 @@ void st7735r_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_colo
 
 void st7735r_poweroff()
 {
-    // // Drain SPI queue
-    // xTaskToNotify = 0;
-    //
-     esp_err_t err = ESP_OK;
-    //
-    // while(err == ESP_OK)
-    // {
-    //     spi_transaction_t* trans_desc;
-    //     err = spi_device_get_trans_result(spi, &trans_desc, 0);
-    //
-    //     printf("st7735r_poweroff: removed pending transfer.\n");
-    // }
-
+    esp_err_t err = ESP_OK;
 
     // fade off backlight
     ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, (LCD_BACKLIGHT_ON_VALUE) ? 0 : DUTY_MAX, 100);
     ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, LEDC_FADE_WAIT_DONE);
 
-
     // Disable LCD panel
     int cmd = 0;
     while (st_sleep_cmds[cmd].databytes != 0xff)
     {
-        //printf("st7735r_poweroff: cmd=%d, st_sleep_cmds[cmd].cmd=0x%x, st_sleep_cmds[cmd].databytes=0x%x\n",
-        //    cmd, st_sleep_cmds[cmd].cmd, st_sleep_cmds[cmd].databytes);
-
         st7735r_send_cmd(st_sleep_cmds[cmd].cmd);
         st7735r_send_data(st_sleep_cmds[cmd].data, st_sleep_cmds[cmd].databytes & 0x7f);
         if (st_sleep_cmds[cmd].databytes & 0x80)
@@ -270,7 +254,6 @@ void st7735r_poweroff()
         }
         cmd++;
     }
-
 /*
     err = rtc_gpio_init(ST7735R_BCKL);
     if (err != ESP_OK)
@@ -289,7 +272,7 @@ void st7735r_poweroff()
     {
         abort();
     }
-    */
+*/
 }
 
 void st7735r_prepare()
