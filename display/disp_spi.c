@@ -66,6 +66,7 @@ void disp_spi_init(void)
         .queue_size=7,
         .pre_cb=disp_spi_pre_transfer_callback,
         .post_cb=NULL,
+        .flags=SPI_DEVICE_NO_DUMMY
     };
 
     //Initialize the SPI bus

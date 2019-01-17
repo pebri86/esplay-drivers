@@ -17,6 +17,7 @@
 
 #define U16x2toU32(m,l) ((((uint32_t)(l>>8|(l&0xFF)<<8))<<16)|(m>>8|(m&0xFF)<<8))
 #define AVERAGE(a, b) ( ((((a) ^ (b)) & 0xf7deU) >> 1) + ((a) & (b)) )
+#define ABS(a)          ( (a) >= 0 ? (a) : -(a) )
 
 #define LINE_BUFFERS (2)
 #define LINE_COUNT (1)
@@ -96,7 +97,8 @@ void write_nes_frame(const uint8_t * data[])
 }
 
 //Averages four pixels into one
-int getAvgPix(uint16_t* bufs, int pitch, int x, int y) {
+static int getAvgPix(uint16_t* bufs, int pitch, int x, int y) 
+{
     int col;
     if (x<0 || x>=LCD_WIDTH) return 0;
     //16-bit: E79C
@@ -105,6 +107,78 @@ int getAvgPix(uint16_t* bufs, int pitch, int x, int y) {
     col+=(bufs[(x+1)+(y*(pitch>>1))]&0xE79C)>>2;
     col+=(bufs[x+((y+1)*(pitch>>1))]&0xE79C)>>2;
     col+=(bufs[(x+1)+((y+1)*(pitch>>1))]&0xE79C)>>2;
+    return col&0xffff;
+}
+
+//color diff
+static uint16_t colordiff(uint16_t a, uint16_t b)
+{
+  // Big endian
+  // rrrrrGGG gggbbbbb
+
+  char r0 = (a >> 11) & 0x1f;
+  char g0 = (a >> 5) & 0x3f;
+  char b0 = (a) & 0x1f;
+
+  char r1 = (b >> 11) & 0x1f;
+  char g1 = (b >> 5) & 0x3f;
+  char b1 = (b) & 0x1f;
+
+  uint16_t rv = r0 - r1;
+  uint16_t gv = g0 - g1;
+  uint16_t bv = b0 - b1;
+
+  return (rv << 11) | (gv << 5) | (bv);
+}
+
+//scaled up alghoritm
+static int getAvgPixScaledUp(uint16_t* bufs, int pitch, int x, int y) 
+{
+    int col, p, p1, p2, p3, d1, d2, d3, d4, min;
+    p = (bufs[(y*(pitch>>1)) + x]&0xE79C)>>2;
+
+    /* target pixel in North-West quadrant */
+    p1 = (bufs[((y-1)*(pitch>>1)) + x]&0xE79C)>>2;     /* neighbour to the North */
+    p2 = (bufs[y*pitch + (x-1)]&0xE79C)>>2;      /* neighbour to the West */
+    p3 = (bufs[(y-1)*pitch + (x-1)]&0xE79C)>>2;  /* neighbour to the North-West */
+    d1 = ABS( colordiff(p, p1) );
+    d2 = ABS( colordiff(p, p2) );
+    d3 = ABS( colordiff(p, p3) );
+    d4 = ABS( colordiff(p1, p2) );        /* North to West */
+
+      /* find minimum */
+    min = d1;
+    if (min > d2) min = d2;
+    if (min > d3) min = d3;
+    if (min > d4) min = d4;
+
+      /* choose interpolator */
+    if (min == d1)
+    {
+        /* North */
+        col = p;
+        col += p1;
+    }
+    else if (min == d2)
+    {
+        /* West */
+        col = p;
+        col += p2;
+    }
+    else if (min == d3)
+    {
+        /* North-West */
+        col = p;
+        col += p3;
+    }
+    else /* min == d4 */
+    {
+        /* North to West */
+        col = p;
+        col += p1;
+        col += p2;
+    }
+
     return col&0xffff;
 }
 
@@ -121,7 +195,11 @@ void write_gb_frame(const uint16_t * data)
             }
             else
             {
+#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
                 uint16_t sample = getAvgPix(data, GB_FRAME_WIDTH*2, x*GB_FRAME_WIDTH/LCD_WIDTH, y*GB_FRAME_HEIGHT/LCD_HEIGHT);
+#elif (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
+                uint16_t sample = getAvgPixScaledUp(data, GB_FRAME_WIDTH*2, x*GB_FRAME_WIDTH/LCD_WIDTH, y*GB_FRAME_HEIGHT/LCD_HEIGHT);
+#endif
                 line[calc_line][x]=((sample >> 8) | ((sample) << 8));
             }
         }
