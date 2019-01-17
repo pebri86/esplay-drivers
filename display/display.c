@@ -139,8 +139,8 @@ static int getAvgPixScaledUp(uint16_t* bufs, int pitch, int x, int y)
 
     /* target pixel in North-West quadrant */
     p1 = (bufs[((y-1)*(pitch>>1)) + x]&0xE79C)>>2;     /* neighbour to the North */
-    p2 = (bufs[y*pitch + (x-1)]&0xE79C)>>2;      /* neighbour to the West */
-    p3 = (bufs[(y-1)*pitch + (x-1)]&0xE79C)>>2;  /* neighbour to the North-West */
+    p2 = (bufs[(y*(pitch>>1)) + (x-1)]&0xE79C)>>2;      /* neighbour to the West */
+    p3 = (bufs[((y-1)*(pitch>>1)) + (x-1)]&0xE79C)>>2;  /* neighbour to the North-West */
     d1 = ABS( colordiff(p, p1) );
     d2 = ABS( colordiff(p, p2) );
     d3 = ABS( colordiff(p, p3) );
