@@ -78,7 +78,7 @@ void disp_spi_init(void)
     assert(ret==ESP_OK);
 }
 
-void send_lines(int ypos, int width, uint16_t *linedata)
+void send_lines(int ypos, int width, uint16_t *linedata, int lineCount)
 {
     esp_err_t ret;
     int x;
@@ -105,11 +105,11 @@ void send_lines(int ypos, int width, uint16_t *linedata)
     trans[2].tx_data[0]=0x2B;           //Page address set
     trans[3].tx_data[0]=ypos>>8;        //Start page high
     trans[3].tx_data[1]=ypos&0xff;      //start page low
-    trans[3].tx_data[2]=ypos>>8;        //end page high
-    trans[3].tx_data[3]=ypos&0xff;      //end page low
+    trans[3].tx_data[2]=(ypos+lineCount)>>8;        //end page high
+    trans[3].tx_data[3]=(ypos+lineCount)&0xff;      //end page low
     trans[4].tx_data[0]=0x2C;           //memory write
     trans[5].tx_buffer=linedata;        //finally send the line data
-    trans[5].length=width*2*8;          //Data length, in bits
+    trans[5].length=width*2*8*lineCount;          //Data length, in bits
     trans[5].flags=0; //undo SPI_TRANS_USE_TXDATA flag
 
     //Queue all transactions.
@@ -119,7 +119,7 @@ void send_lines(int ypos, int width, uint16_t *linedata)
     }
 }
 
-void send_lines_ext(int ypos, int xpos, int width, uint16_t *linedata)
+void send_lines_ext(int ypos, int xpos, int width, uint16_t *linedata, int lineCount)
 {
     esp_err_t ret;
     int x;
@@ -146,11 +146,11 @@ void send_lines_ext(int ypos, int xpos, int width, uint16_t *linedata)
     trans[2].tx_data[0]=0x2B;           //Page address set
     trans[3].tx_data[0]=ypos>>8;        //Start page high
     trans[3].tx_data[1]=ypos&0xff;      //start page low
-    trans[3].tx_data[2]=ypos>>8;        //end page high
-    trans[3].tx_data[3]=ypos&0xff;      //end page low
+    trans[3].tx_data[2]=(ypos+lineCount)>>8;        //end page high
+    trans[3].tx_data[3]=(ypos+lineCount)&0xff;      //end page low
     trans[4].tx_data[0]=0x2C;           //memory write
     trans[5].tx_buffer=linedata;        //finally send the line data
-    trans[5].length=width*2*8;          //Data length, in bits
+    trans[5].length=width*2*8*lineCount;          //Data length, in bits
     trans[5].flags=0; //undo SPI_TRANS_USE_TXDATA flag
 
     //Queue all transactions.

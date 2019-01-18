@@ -20,7 +20,7 @@
 #define ABS(a)          ( (a) >= 0 ? (a) : -(a) )
 
 #define LINE_BUFFERS (2)
-#define LINE_COUNT (1)
+#define LINE_COUNT   (4)
 
 uint16_t* line[LINE_BUFFERS];
 extern uint16_t myPalette[];
@@ -91,9 +91,41 @@ void write_nes_frame(const uint8_t * data[])
         if (sending_line!=-1) send_line_finish();
         sending_line=calc_line;
         calc_line=(calc_line==1)?0:1;
-        send_lines(y, LCD_WIDTH, line[sending_line]);
+        send_lines(y, LCD_WIDTH, line[sending_line], 1);
     }
     send_line_finish();
+}
+
+static int bilinier_scaling(uint16_t * bufs, int pitch, int x, int y)
+{
+    int a,b,c,d,i,j;
+    float x_diff, y_diff, red , green, blue, col;
+    float x_ratio = ((float) (GB_FRAME_WIDTH-1))/(GB_FRAME_WIDTH + (LCD_HEIGHT - GB_FRAME_HEIGHT));
+    float y_ratio = ((float) (GB_FRAME_HEIGHT-1))/LCD_HEIGHT;
+
+    i = (int) (x_ratio * x);
+    j = (int) (y_ratio * y);
+
+    x_diff = (x_ratio * x) - i;
+    y_diff = (y_ratio * y) - j;
+    
+    a=bufs[i+(j*(pitch))];
+    b=bufs[(i+1)+(j*(pitch))];
+    c=bufs[i+((j+1)*(pitch))];
+    d=bufs[(i+1)+((j+1)*(pitch))];
+
+    red = ((a >> 11) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b >> 11) & 0x1f) * (x_diff) * (1-y_diff) +
+        ((c >> 11) & 0x1f) * (y_diff) * (1-x_diff) + ((d >> 11) & 0x1f) * (x_diff * y_diff);
+
+    green = ((a >> 5) & 0x3f) * (1-x_diff) * (1-y_diff) + ((b >> 5) & 0x3f) * (x_diff) * (1-y_diff) +
+        ((c >> 5) & 0x3f) * (y_diff) * (1-x_diff) + ((d >> 5) & 0x3f) * (x_diff * y_diff);
+
+    blue = ((a) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b) & 0x1f) * (x_diff) * (1-y_diff) +
+        ((c) & 0x1f) * (y_diff) * (1-x_diff) + ((d) & 0x1f) * (x_diff * y_diff);
+
+    col = ((int)red << 11) | ((int)green << 5) | ((int)blue);
+
+    return col;
 }
 
 //Averages four pixels into one
@@ -121,73 +153,6 @@ static int getAvgPix(uint16_t* bufs, int pitch, int x, int y)
     return col&0xffff;
 }
 
-//color diff
-static uint16_t colordiff(uint16_t a, uint16_t b)
-{
-  // Big endian
-  // rrrrrGGG gggbbbbb
-
-  char r0 = (a >> 11) & 0x1f;
-  char g0 = (a >> 5) & 0x3f;
-  char b0 = (a) & 0x1f;
-
-  char r1 = (b >> 11) & 0x1f;
-  char g1 = (b >> 5) & 0x3f;
-  char b1 = (b) & 0x1f;
-
-  uint16_t rv = ((r1 - r0) >> 1) + r0;
-  uint16_t gv = ((g1 - g0) >> 1) + g0;
-  uint16_t bv = ((b1 - b0) >> 1) + b0;
-
-  return (rv << 11) | (gv << 5) | (bv);
-}
-
-//scaled up alghoritm
-static int getAvgPixScaledUp(uint16_t* bufs, int pitch, int x, int y) 
-{
-    uint16_t col, p, p1, p2, p3, d1, d2, d3, d4, min;
-    p = bufs[(y*(pitch)) + x];
-
-    /* target pixel in North-West quadrant */
-    p1 = bufs[((y-1)*(pitch)) + x];     /* neighbour to the North */
-    p2 = bufs[(y*(pitch)) + (x-1)];      /* neighbour to the West */
-    p3 = bufs[((y-1)*(pitch)) + (x-1)];  /* neighbour to the North-West */
-    d1 = ABS( colordiff(p, p1) );
-    d2 = ABS( colordiff(p, p2) );
-    d3 = ABS( colordiff(p, p3) );
-    d4 = ABS( colordiff(p1, p2) );        /* North to West */
-
-      /* find minimum */
-    min = d1;
-    if (min > d2) min = d2;
-    if (min > d3) min = d3;
-    if (min > d4) min = d4;
-
-      /* choose interpolator */
-    if (min == d1)
-    {
-        /* North */
-        col = AVERAGE(p,p1);
-    }
-    else if (min == d2)
-    {
-        /* West */
-        col = AVERAGE(p,p2);
-    }
-    else if (min == d3)
-    {
-        /* North-West */
-        col = AVERAGE(p,p3);
-    }
-    else /* min == d4 */
-    {
-        /* North to West */
-        col = AVERAGE(p, AVERAGE(p1,p2));
-    }
-
-    return col&0xffff;
-}
-
 void write_gb_frame(const uint16_t * data, bool scale)
 {
     short x,y;
@@ -196,14 +161,14 @@ void write_gb_frame(const uint16_t * data, bool scale)
 
     if (data == NULL)
     {
-        for (y=0; y<LCD_HEIGHT; y++) {
+        for (y=0; y<LCD_HEIGHT; ++y) {
             for (x=0; x<LCD_WIDTH; x++) {
                 line[calc_line][x] = 0;
             }
             if (sending_line!=-1) send_line_finish();
             sending_line=calc_line;
             calc_line=(calc_line==1)?0:1;
-            send_lines_ext(y, 0, LCD_WIDTH, line[sending_line]);
+            send_lines_ext(y, 0, LCD_WIDTH, line[sending_line], 1);
             }
         send_line_finish(); 
     }
@@ -214,17 +179,25 @@ void write_gb_frame(const uint16_t * data, bool scale)
             int outputHeight = LCD_HEIGHT;
             int outputWidth = GB_FRAME_WIDTH + (LCD_HEIGHT - GB_FRAME_HEIGHT);
             int xpos = (LCD_WIDTH - outputWidth) / 2;
-            for (y=1; y<outputHeight; y++) 
+
+            for (y=0; y<outputHeight; y+=LINE_COUNT) 
             {
-                for (x=0; x<outputWidth; x++) 
+                for (int i = 0; i < LINE_COUNT; ++i)
                 {
-                    uint16_t sample = getAvgPix(data, GB_FRAME_WIDTH, x*GB_FRAME_WIDTH/outputWidth, y*GB_FRAME_HEIGHT/outputHeight);
-                    line[calc_line][x]=((sample >> 8) | ((sample) << 8));
-                }
+                    if((y + i) >= outputHeight) break;
+
+                    int index = (i) * outputWidth;
+                
+                    for (x=0; x<outputWidth; ++x) 
+                    {
+                        uint16_t sample = bilinier_scaling(data, GB_FRAME_WIDTH, x, (y+i));
+                        line[calc_line][index++]=((sample >> 8) | ((sample) << 8));
+                    }
+                }                
                 if (sending_line!=-1) send_line_finish();
                 sending_line=calc_line;
                 calc_line=(calc_line==1)?0:1;
-                send_lines_ext(y, xpos, outputWidth, line[sending_line]);
+                send_lines_ext(y, xpos, outputWidth, line[sending_line], LINE_COUNT);
             }
             send_line_finish();
         }
@@ -233,17 +206,25 @@ void write_gb_frame(const uint16_t * data, bool scale)
             int ypos = (LCD_HEIGHT - GB_FRAME_HEIGHT)/2;
             int xpos = (LCD_WIDTH - GB_FRAME_WIDTH)/2;
 
-            for (y=0; y<GB_FRAME_HEIGHT; y++) 
+            for (y=0; y<GB_FRAME_HEIGHT; y+=LINE_COUNT)
             {
-                for (x=0; x<GB_FRAME_WIDTH; x++) 
+                for (int i = 0; i < LINE_COUNT; ++i)
                 {
-                    uint16_t sample = data[(y*(GB_FRAME_WIDTH)) + x];
-                    line[calc_line][x]=((sample >> 8) | ((sample) << 8));
+                    if((y + i) >= GB_FRAME_HEIGHT) break;
+
+                    int index = (i) * GB_FRAME_WIDTH;
+                    int bufferIndex = ((y + i) * GB_FRAME_WIDTH);
+
+                    for (x = 0; x < GB_FRAME_WIDTH; ++x)
+                    {
+                        uint16_t sample = data[bufferIndex++];
+                        line[calc_line][index++] = ((sample >> 8) | ((sample & 0xff) << 8));
+                    }
                 }
                 if (sending_line!=-1) send_line_finish();
                 sending_line=calc_line;
                 calc_line=(calc_line==1)?0:1;
-                send_lines_ext(y+ypos, xpos, GB_FRAME_WIDTH, line[sending_line]);
+                send_lines_ext(y+ypos, xpos, GB_FRAME_WIDTH, line[sending_line], LINE_COUNT);
             }
             send_line_finish();
         }
