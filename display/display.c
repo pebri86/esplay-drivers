@@ -99,7 +99,8 @@ void write_nes_frame(const uint8_t * data[])
 static int bilinier_scaling(uint16_t * bufs, int pitch, int x, int y)
 {
     int a,b,c,d,i,j;
-    float x_diff, y_diff, red , green, blue, col;
+    int x_diff, y_diff;
+    int red , green, blue, col;
     float x_ratio = ((float) (GB_FRAME_WIDTH-1))/(GB_FRAME_WIDTH + (LCD_HEIGHT - GB_FRAME_HEIGHT));
     float y_ratio = ((float) (GB_FRAME_HEIGHT-1))/LCD_HEIGHT;
 
@@ -108,7 +109,7 @@ static int bilinier_scaling(uint16_t * bufs, int pitch, int x, int y)
 
     x_diff = (x_ratio * x) - i;
     y_diff = (y_ratio * y) - j;
-    
+
     a=bufs[i+(j*(pitch))];
     b=bufs[(i+1)+(j*(pitch))];
     c=bufs[i+((j+1)*(pitch))];
