@@ -96,62 +96,38 @@ void write_nes_frame(const uint8_t * data[])
     send_line_finish();
 }
 
-static int bilinier_scaling(uint16_t * bufs, int pitch, int x, int y)
+/* Resize using bilinear interpolation */
+static uint16_t getPixel(const uint16_t * bufs, int x, int y, int w1, int h1, int w2, int h2)
 {
-    int a,b,c,d,i,j;
-    int x_diff, y_diff;
-    int red , green, blue, col;
-    float x_ratio = ((float) (GB_FRAME_WIDTH-1))/(GB_FRAME_WIDTH + (LCD_HEIGHT - GB_FRAME_HEIGHT));
-    float y_ratio = ((float) (GB_FRAME_HEIGHT-1))/LCD_HEIGHT;
+    int x_diff, y_diff, xv, yv, red , green, blue, col, a, b, c, d, index;
+    int x_ratio = (int) (((w1-1)<<16)/w2) + 1;
+    int y_ratio = (int) (((h1-1)<<16)/h2) + 1;
 
-    i = (int) (x_ratio * x);
-    j = (int) (y_ratio * y);
+    xv = (int) ((x_ratio * x)>>16);
+    yv = (int) ((y_ratio * y)>>16);
 
-    x_diff = (x_ratio * x) - i;
-    y_diff = (y_ratio * y) - j;
+    x_diff = ((x_ratio * x)>>16) - (xv);
+    y_diff = ((y_ratio * y)>>16) - (yv);
 
-    a=bufs[i+(j*(pitch))];
-    b=bufs[(i+1)+(j*(pitch))];
-    c=bufs[i+((j+1)*(pitch))];
-    d=bufs[(i+1)+((j+1)*(pitch))];
+    index = yv*w1+xv ;
 
-    red = ((a >> 11) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b >> 11) & 0x1f) * (x_diff) * (1-y_diff) +
-        ((c >> 11) & 0x1f) * (y_diff) * (1-x_diff) + ((d >> 11) & 0x1f) * (x_diff * y_diff);
+    a = bufs[index];
+    b = bufs[index+1];
+    c = bufs[index+w1];
+    d = bufs[index+w1+1];
 
-    green = ((a >> 5) & 0x3f) * (1-x_diff) * (1-y_diff) + ((b >> 5) & 0x3f) * (x_diff) * (1-y_diff) +
-        ((c >> 5) & 0x3f) * (y_diff) * (1-x_diff) + ((d >> 5) & 0x3f) * (x_diff * y_diff);
+    red = (((a >> 11) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b >> 11) & 0x1f) * (x_diff) * (1-y_diff) +
+        ((c >> 11) & 0x1f) * (y_diff) * (1-x_diff) + ((d >> 11) & 0x1f) * (x_diff * y_diff));
 
-    blue = ((a) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b) & 0x1f) * (x_diff) * (1-y_diff) +
-        ((c) & 0x1f) * (y_diff) * (1-x_diff) + ((d) & 0x1f) * (x_diff * y_diff);
+    green = (((a >> 5) & 0x3f) * (1-x_diff) * (1-y_diff) + ((b >> 5) & 0x3f) * (x_diff) * (1-y_diff) +
+        ((c >> 5) & 0x3f) * (y_diff) * (1-x_diff) + ((d >> 5) & 0x3f) * (x_diff * y_diff));
+
+    blue = (((a) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b) & 0x1f) * (x_diff) * (1-y_diff) +
+        ((c) & 0x1f) * (y_diff) * (1-x_diff) + ((d) & 0x1f) * (x_diff * y_diff));
 
     col = ((int)red << 11) | ((int)green << 5) | ((int)blue);
 
     return col;
-}
-
-//Averages four pixels into one
-static int getAvgPix(uint16_t* bufs, int pitch, int x, int y) 
-{
-    int col, p1, p2, p3, p4, d1, d2;
-    if (x<0 || x>=LCD_WIDTH) return 0;
-    //16-bit: E79C
-    //15-bit: 739C
-    /*
-    col=(bufs[x+(y*(pitch>>1))]&0xE79C)>>2;
-    col+=(bufs[(x+1)+(y*(pitch>>1))]&0xE79C)>>2;
-    col+=(bufs[x+((y+1)*(pitch>>1))]&0xE79C)>>2;
-    col+=(bufs[(x+1)+((y+1)*(pitch>>1))]&0xE79C)>>2;
-    */    
-    p1=bufs[x+(y*(pitch))];
-    p2=bufs[(x+1)+(y*(pitch))];
-    p3=bufs[x+((y+1)*(pitch))];
-    p4=bufs[(x+1)+((y+1)*(pitch))];
-
-    d1 = AVERAGE(p1,p2);
-    d2 = AVERAGE(p3,p4);
-    col = AVERAGE(d1,d2);
-
-    return col&0xffff;
 }
 
 void write_gb_frame(const uint16_t * data, bool scale)
@@ -191,7 +167,38 @@ void write_gb_frame(const uint16_t * data, bool scale)
                 
                     for (x=0; x<outputWidth; ++x) 
                     {
-                        uint16_t sample = bilinier_scaling(data, GB_FRAME_WIDTH, x, (y+i));
+                        /* use float on small lcd doesn't impact performance plus good quality image */
+                        #if CONFIG_HW_LCD_TYPE == LCD_TYPE_ST
+                        float x_ratio = ((float) ((GB_FRAME_WIDTH-1))/outputWidth);
+                        float y_ratio = ((float) ((GB_FRAME_HEIGHT-1))/outputHeight);
+
+                        int xv = (int) (x_ratio * x);
+                        int yv = (int) (y_ratio * (y+i));
+
+                        float x_diff = (x_ratio * x) - xv;
+                        float y_diff = (y_ratio * (y+i)) - yv;
+
+                        int k = yv*GB_FRAME_WIDTH+xv ;
+
+                        int a = data[k];
+                        int b = data[k+1];
+                        int c = data[k+GB_FRAME_WIDTH];
+                        int d = data[k+GB_FRAME_WIDTH+1];
+
+                        int red = (((a >> 11) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b >> 11) & 0x1f) * (x_diff) * (1-y_diff) +
+                            ((c >> 11) & 0x1f) * (y_diff) * (1-x_diff) + ((d >> 11) & 0x1f) * (x_diff * y_diff));
+
+                        int green = (((a >> 5) & 0x3f) * (1-x_diff) * (1-y_diff) + ((b >> 5) & 0x3f) * (x_diff) * (1-y_diff) +
+                            ((c >> 5) & 0x3f) * (y_diff) * (1-x_diff) + ((d >> 5) & 0x3f) * (x_diff * y_diff));
+
+                        int blue = (((a) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b) & 0x1f) * (x_diff) * (1-y_diff) +
+                            ((c) & 0x1f) * (y_diff) * (1-x_diff) + ((d) & 0x1f) * (x_diff * y_diff));
+
+                        uint16_t sample = ((int)red << 11) | ((int)green << 5) | ((int)blue);
+                        #else
+                        /* on bigger lcd use float impact to performance so use bilinear using integer instead */
+                        uint16_t sample = getPixel(data, x, (y+i), GB_FRAME_WIDTH, GB_FRAME_HEIGHT, outputWidth, outputHeight);
+                        #endif
                         line[calc_line][index++]=((sample >> 8) | ((sample) << 8));
                     }
                 }                

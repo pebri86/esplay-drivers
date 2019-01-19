@@ -7,7 +7,7 @@
 # please read the ESP-IDF documents if you need to do this.
 #
 
-#CFLAGS :=
+#CFLAGS += -Dmfp16-format=ieee -Dmfpu=neon-fp16
 #COMPONENT_DEPENDS :=
 COMPONENT_SRCDIRS := . audio display input system storage
 COMPONENT_ADD_INCLUDEDIRS := $(COMPONENT_SRCDIRS) ..
