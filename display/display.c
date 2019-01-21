@@ -24,7 +24,7 @@
 
 uint16_t* line[LINE_BUFFERS];
 extern uint16_t myPalette[];
-
+static uint16_t getPixel(const uint16_t * bufs, int x, int y, int w1, int h1, int w2, int h2);
 
 void set_display_brightness(int percent)
 {
@@ -72,28 +72,50 @@ static uint16_t averageSamples(const uint8_t * data[], int dx, int dy)
 void write_nes_frame(const uint8_t * data[])
 {
     short x,y;
-    uint16_t a,b;
+    //uint16_t a,b;
     int sending_line=-1;
     int calc_line=0;
-    for (y=0; y<LCD_HEIGHT; y++) {
-        for (x=0; x<LCD_WIDTH; x++) {
-            if (data == NULL)
-            {
+
+    if (data == NULL)
+    {
+        for (y=0; y<LCD_HEIGHT; ++y) {
+            for (x=0; x<LCD_WIDTH; x++) {
                 line[calc_line][x] = 0;
             }
-            else
-            {
-                a = averageSamples(data, x, y);
-                b = averageSamples(data, x, y);
-                line[calc_line][x]=U16x2toU32(a,b);
+            if (sending_line!=-1) send_line_finish();
+            sending_line=calc_line;
+            calc_line=(calc_line==1)?0:1;
+            send_lines_ext(y, 0, LCD_WIDTH, line[sending_line], 1);
             }
-        }
-        if (sending_line!=-1) send_line_finish();
-        sending_line=calc_line;
-        calc_line=(calc_line==1)?0:1;
-        send_lines(y, LCD_WIDTH, line[sending_line], 1);
+        send_line_finish(); 
     }
-    send_line_finish();
+    else
+    {
+        for (y=0; y<LCD_HEIGHT; y+=LINE_COUNT) 
+        {
+            for (int i = 0; i < LINE_COUNT; ++i)
+            {
+                if((y + i) >= outputHeight) break;
+
+                int index = (i) * outputWidth;
+
+                for (x=0; x<LCD_WIDTH; x++)
+                {
+                    /*
+                    a = averageSamples(data, x, y);
+                    b = averageSamples(data, x, y);
+                    */
+                    uint16_t sample = getPixel(data, x, y, NES_FRAME_WIDTH, NES_FRAME_HEIGHT, LCD_WIDTH, LCD_HEIGHT);
+                    line[calc_line][index++]=U16x2toU32(sample,sample);
+                }
+            }
+            if (sending_line!=-1) send_line_finish();
+            sending_line=calc_line;
+            calc_line=(calc_line==1)?0:1;
+            send_lines_ext(y, 0, LCD_WIDTH, line[sending_line], LINE_COUNT);
+        }
+        send_line_finish();
+    }
 }
 
 /* Resize using bilinear interpolation */
