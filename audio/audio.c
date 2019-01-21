@@ -6,7 +6,7 @@
 #include "driver/rtc_io.h"
 
 static float Volume = 0.5f;
-static volume_level volumeLevel = VOLUME_LEVEL1;
+static volume_level volumeLevel = VOLUME_LEVEL3;
 static int volumeLevels[] = {0, 125, 250, 500, 1000};
 
 volume_level audio_volume_get()
@@ -23,7 +23,7 @@ void audio_volume_set(volume_level value)
     }
 
     volumeLevel = value;
-    Volume = (float)volumeLevels[value] * 0.0001f;
+    Volume = (float)volumeLevels[value] * 0.001f;
 }
 
 void audio_volume_change()
