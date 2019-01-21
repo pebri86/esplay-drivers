@@ -15,7 +15,6 @@
 #define GB_FRAME_WIDTH 160
 #define GB_FRAME_HEIGHT 144
 
-#define U16x2toU32(m,l) ((((uint32_t)(l>>8|(l&0xFF)<<8))<<16)|(m>>8|(m&0xFF)<<8))
 #define AVERAGE(a, b) ( ((((a) ^ (b)) & 0xf7deU) >> 1) + ((a) & (b)) )
 #define ABS(a)          ( (a) >= 0 ? (a) : -(a) )
 
@@ -24,7 +23,7 @@
 
 uint16_t* line[LINE_BUFFERS];
 extern uint16_t myPalette[];
-
+static uint16_t getPixel(const uint16_t * bufs, int x, int y, int w1, int h1, int w2, int h2);
 
 void set_display_brightness(int percent)
 {
@@ -59,41 +58,75 @@ void display_poweroff(int percent)
 #endif
 }
 
-static uint16_t averageSamples(const uint8_t * data[], int dx, int dy)
+/* Box Filter Scaling */
+static uint16_t getPixelNes(const uint8_t * data[], int x, int y, int w1, int h1, int w2, int h2)
 {
     uint16_t a,b;
-    int y = dy*NES_FRAME_HEIGHT/LCD_HEIGHT;
-    int x = dx*NES_FRAME_WIDTH/LCD_WIDTH;
-    a = AVERAGE(myPalette[(unsigned char) (data[y][x])],myPalette[(unsigned char) (data[y][x + 1])]);
-    b = AVERAGE(myPalette[(unsigned char) (data[y + 1][x])],myPalette[(unsigned char) (data[y + 1][x + 1])]);
+    int dy = y*h1/h2;
+    int dx = x*w1/w2;
+    a = AVERAGE(myPalette[(unsigned char) (data[dy][dx])],myPalette[(unsigned char) (data[dy][dx + 1])]);
+    b = AVERAGE(myPalette[(unsigned char) (data[dy + 1][dx])],myPalette[(unsigned char) (data[dy + 1][dx + 1])]);
     return AVERAGE(a,b);
 }
 
 void write_nes_frame(const uint8_t * data[])
 {
     short x,y;
-    uint16_t a,b;
     int sending_line=-1;
     int calc_line=0;
-    for (y=0; y<LCD_HEIGHT; y++) {
-        for (x=0; x<LCD_WIDTH; x++) {
-            if (data == NULL)
-            {
+
+    if (data == NULL)
+    {
+        for (y=0; y<LCD_HEIGHT; ++y) {
+            for (x=0; x<LCD_WIDTH; x++) {
                 line[calc_line][x] = 0;
             }
-            else
-            {
-                a = averageSamples(data, x, y);
-                b = averageSamples(data, x, y);
-                line[calc_line][x]=U16x2toU32(a,b);
+            if (sending_line!=-1) send_line_finish();
+            sending_line=calc_line;
+            calc_line=(calc_line==1)?0:1;
+            send_lines_ext(y, 0, LCD_WIDTH, line[sending_line], 1);
             }
-        }
-        if (sending_line!=-1) send_line_finish();
-        sending_line=calc_line;
-        calc_line=(calc_line==1)?0:1;
-        send_lines(y, LCD_WIDTH, line[sending_line], 1);
+        send_line_finish(); 
     }
-    send_line_finish();
+    else
+    {
+        /* maintaine output aspect ratio while scaling */
+        #if CONFIG_HW_LCD_TYPE == LCD_TYPE_ST
+        int outputHeight = LCD_HEIGHT;
+        int outputWidth = NES_FRAME_WIDTH + (LCD_HEIGHT - NES_FRAME_HEIGHT);
+        int xpos = (LCD_WIDTH - outputWidth) / 2;
+        /* place output on center of lcd */
+        #elif CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI
+        int outputHeight = NES_FRAME_HEIGHT;
+        int outputWidth = NES_FRAME_WIDTH;
+        int xpos = (LCD_WIDTH - outputWidth) / 2;
+        #endif
+
+        for (y=0; y<outputHeight; y+=LINE_COUNT) 
+        {
+            for (int i = 0; i < LINE_COUNT; ++i)
+            {
+                if((y + i) >= outputHeight) break;
+
+                int index = (i) * outputWidth;
+
+                for (x=0; x<outputWidth; x++)
+                {
+                    #if CONFIG_HW_LCD_TYPE == LCD_TYPE_ST /* scale if lcd st7735 in use */
+                    uint16_t sample = getPixelNes(data, x, (y+i), NES_FRAME_WIDTH, NES_FRAME_HEIGHT, outputWidth, outputHeight);
+                    #elif CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI /* otherwise just send pixel to lcd */
+                    uint16_t sample = myPalette[(unsigned char) (data[(y+i)][x])];
+                    #endif
+                    line[calc_line][index++] = ((sample >> 8) | ((sample) << 8));
+                }
+            }
+            if (sending_line!=-1) send_line_finish();
+            sending_line=calc_line;
+            calc_line=(calc_line==1)?0:1;
+            send_lines_ext(y, xpos, outputWidth, line[sending_line], LINE_COUNT);
+        }
+        send_line_finish();
+    }
 }
 
 /* Resize using bilinear interpolation */
