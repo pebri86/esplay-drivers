@@ -27,35 +27,17 @@ static uint16_t getPixel(const uint16_t * bufs, int x, int y, int w1, int h1, in
 
 void set_display_brightness(int percent)
 {
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
     backlight_percentage_set(percent);
-#endif
-
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-    st_backlight_percentage_set(percent);
-#endif
 }
 
 void display_prepare(int percent)
 {
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
     ili9341_prepare();
-#endif
-
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-    st7735r_prepare();
-#endif
 }
 
 void display_poweroff(int percent)
 {
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
     ili9341_poweroff();
-#endif
-
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-    st7735r_poweroff();
-#endif
 }
 
 /* Box Filter Scaling */
@@ -200,38 +182,8 @@ void write_gb_frame(const uint16_t * data, bool scale)
                 
                     for (x=0; x<outputWidth; ++x) 
                     {
-                        /* use float on small lcd doesn't impact performance plus good quality image */
-                        #if CONFIG_HW_LCD_TYPE == LCD_TYPE_ST
-                        float x_ratio = ((float) ((GB_FRAME_WIDTH-1))/outputWidth);
-                        float y_ratio = ((float) ((GB_FRAME_HEIGHT-1))/outputHeight);
-
-                        int xv = (int) (x_ratio * x);
-                        int yv = (int) (y_ratio * (y+i));
-
-                        float x_diff = (x_ratio * x) - xv;
-                        float y_diff = (y_ratio * (y+i)) - yv;
-
-                        int k = yv*GB_FRAME_WIDTH+xv ;
-
-                        int a = data[k];
-                        int b = data[k+1];
-                        int c = data[k+GB_FRAME_WIDTH];
-                        int d = data[k+GB_FRAME_WIDTH+1];
-
-                        int red = (((a >> 11) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b >> 11) & 0x1f) * (x_diff) * (1-y_diff) +
-                            ((c >> 11) & 0x1f) * (y_diff) * (1-x_diff) + ((d >> 11) & 0x1f) * (x_diff * y_diff));
-
-                        int green = (((a >> 5) & 0x3f) * (1-x_diff) * (1-y_diff) + ((b >> 5) & 0x3f) * (x_diff) * (1-y_diff) +
-                            ((c >> 5) & 0x3f) * (y_diff) * (1-x_diff) + ((d >> 5) & 0x3f) * (x_diff * y_diff));
-
-                        int blue = (((a) & 0x1f) * (1-x_diff) * (1-y_diff) + ((b) & 0x1f) * (x_diff) * (1-y_diff) +
-                            ((c) & 0x1f) * (y_diff) * (1-x_diff) + ((d) & 0x1f) * (x_diff * y_diff));
-
-                        uint16_t sample = ((int)red << 11) | ((int)green << 5) | ((int)blue);
-                        #else
-                        /* on bigger lcd use float impact to performance so use bilinear using integer instead */
+                       
                         uint16_t sample = getPixel(data, x, (y+i), GB_FRAME_WIDTH, GB_FRAME_HEIGHT, outputWidth, outputHeight);
-                        #endif
                         line[calc_line][index++]=((sample >> 8) | ((sample) << 8));
                     }
                 }                
@@ -283,11 +235,5 @@ void display_init()
     }
     // Initialize the LCD
     disp_spi_init();
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-    st7735r_init();
-#endif
-
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
     ili9341_init();
-#endif
 }

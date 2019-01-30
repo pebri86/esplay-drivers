@@ -8,16 +8,11 @@
 #include "sdmmc_cmd.h"
 #include "esp_heap_caps.h"
 #include "esp_spiffs.h"
-
+#include "driver/sdio_slave.h"
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
-
-#define SD_PIN_NUM_MISO 22
-#define SD_PIN_NUM_MOSI 23
-#define SD_PIN_NUM_CLK  18
-#define SD_PIN_NUM_CS 4
 
 static bool isOpen = false;
 
@@ -179,17 +174,19 @@ esp_err_t sdcard_open(const char* base_path)
     }
     else
     {
-        sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    	host.slot = HSPI_HOST; // HSPI_HOST;
-    	//host.max_freq_khz = SDMMC_FREQ_HIGHSPEED; //10000000;
-        host.max_freq_khz = SDMMC_FREQ_DEFAULT;
+        sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+        host.flags = SDMMC_HOST_FLAG_1BIT;
+        #ifdef CONFIG_SDIO_DAT2_DISABLED
+            /* For slave chips with 3.3V flash, DAT2 pullup conflicts with the pulldown
+               required by strapping pin (MTDI). We can either burn the EFUSE for the
+               strapping or just disable the DAT2 and work in 1-bit mode.
+             */
+        host.flags |= SDIO_SLAVE_FLAG_DAT2_DISABLED;
+        #endif
 
-    	sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    	slot_config.gpio_miso = (gpio_num_t)SD_PIN_NUM_MISO;
-    	slot_config.gpio_mosi = (gpio_num_t)SD_PIN_NUM_MOSI;
-    	slot_config.gpio_sck  = (gpio_num_t)SD_PIN_NUM_CLK;
-    	slot_config.gpio_cs = (gpio_num_t)SD_PIN_NUM_CS;
-    	slot_config.dma_channel = 2;
+    	sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+        slot_config.width = 1;
+
 
     	// Options for mounting the filesystem.
     	// If format_if_mount_failed is set to true, SD card will be partitioned and

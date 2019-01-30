@@ -7,15 +7,13 @@
 #include "lvgl/lv_hal/lv_hal_indev.h"
 #endif
 
-#define A       CONFIG_GAMEPAD_A
-#define B       CONFIG_GAMEPAD_B
-#define START   CONFIG_GAMEPAD_START
-#define SELECT  CONFIG_GAMEPAD_SELECT
-#define UP      CONFIG_GAMEPAD_UP
-#define DOWN    CONFIG_GAMEPAD_DOWN
-#define LEFT    CONFIG_GAMEPAD_LEFT
-#define RIGHT   CONFIG_GAMEPAD_RIGHT
-#define MENU    CONFIG_GAMEPAD_MENU
+#define A       32
+#define B       33
+#define START   36
+#define SELECT  0
+#define IO_Y    ADC1_CHANNEL_7
+#define IO_X    ADC1_CHANNEL_6
+#define MENU    13
 
 enum
 {

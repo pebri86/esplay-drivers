@@ -14,19 +14,10 @@ extern "C"
 {
 #endif
 
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
 #include "ili9341.h"
 #define LCD_WIDTH       ILI9341_HOR_RES
 #define LCD_HEIGHT      ILI9341_VER_RES
 #define DPI             100
-#endif
-
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-#include "st7735r.h"
-#define LCD_WIDTH       ST7735R_HOR_RES
-#define LCD_HEIGHT      ST7735R_VER_RES
-#define DPI             20
-#endif
 
 void display_init();
 void write_nes_frame(const uint8_t * data[]);

@@ -24,8 +24,8 @@ extern "C" {
 #define ILI9341_HOR_RES	320
 #define ILI9341_VER_RES	240
 
-#define ILI9341_RST     CONFIG_HW_LCD_RESET_GPIO
-#define ILI9341_BCKL    CONFIG_HW_LCD_BL_GPIO
+//#define ILI9341_RST     CONFIG_HW_LCD_RESET_GPIO
+#define ILI9341_BCKL    27
 
 /**********************
  *      TYPEDEFS

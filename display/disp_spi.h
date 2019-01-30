@@ -19,14 +19,12 @@ extern "C" {
  *      DEFINES
  *********************/
 
-#define DISP_SPI_MOSI CONFIG_HW_LCD_MOSI_GPIO
-#define DISP_SPI_CLK  CONFIG_HW_LCD_CLK_GPIO
-#define DISP_SPI_CS   CONFIG_HW_LCD_CS_GPIO
-#define DISP_SPI_DC   CONFIG_HW_LCD_DC_GPIO
+#define DISP_SPI_MOSI 23
+#define DISP_SPI_CLK  18
+#define DISP_SPI_CS   5
+#define DISP_SPI_DC   12
 #define CMD_ON        0
 #define DATA_ON       1
-#define LCD_TYPE_ILI  0
-#define LCD_TYPE_ST   1
 
 /**********************
  *      TYPEDEFS

@@ -71,6 +71,7 @@ DRAM_ATTR static const lcd_init_cmd_t ili_sleep_cmds[] = {
 void ili9341_init(void)
 {
 	lcd_init_cmd_t ili_init_cmds[]={
+		{TFT_CMD_SWRESET, {0}, 0x80},
 		{0xCF, {0x00, 0x83, 0X30}, 3},
 		{0xED, {0x64, 0x03, 0X12, 0X81}, 4},
 		{0xE8, {0x85, 0x01, 0x79}, 3},
@@ -99,13 +100,10 @@ void ili9341_init(void)
 	};
 
 	//Initialize non-SPI GPIOs
-	gpio_set_direction(ILI9341_RST, GPIO_MODE_OUTPUT);
 	gpio_set_direction(ILI9341_BCKL, GPIO_MODE_OUTPUT);
 
 	//Reset the display
-	gpio_set_level(ILI9341_RST, 0);
-	vTaskDelay(100 / portTICK_RATE_MS);
-	gpio_set_level(ILI9341_RST, 1);
+	ili9341_send_cmd(TFT_CMD_SWRESET);
 	vTaskDelay(100 / portTICK_RATE_MS);
 
 

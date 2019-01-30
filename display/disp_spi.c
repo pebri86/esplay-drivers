@@ -16,14 +16,7 @@
  *      DEFINES
  *********************/
 /*Clock out at 40 MHz*/
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI)
-#define SPI_CLOCK_SPEED 40000000
-#endif
-
-/*ST7735 can't handle correctly at 40 Mhz speed*/
-#if (CONFIG_HW_LCD_TYPE == LCD_TYPE_ST)
-#define SPI_CLOCK_SPEED 26000000
-#endif
+#define SPI_CLOCK_SPEED 60000000
 
 /**********************
  *      TYPEDEFS
@@ -48,6 +41,7 @@ static void disp_spi_pre_transfer_callback(spi_transaction_t *t);
  **********************/
 void disp_spi_init(void)
 {
+    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[DISP_SPI_DC], PIN_FUNC_GPIO);
     gpio_set_direction(DISP_SPI_DC, GPIO_MODE_OUTPUT);
     esp_err_t ret;
 
@@ -56,7 +50,8 @@ void disp_spi_init(void)
         .mosi_io_num=DISP_SPI_MOSI,
         .sclk_io_num=DISP_SPI_CLK,
         .quadwp_io_num=-1,
-        .quadhd_io_num=-1
+        .quadhd_io_num=-1,
+        .max_transfer_sz=4*320*2+8
     };
 
     spi_device_interface_config_t devcfg={
@@ -66,7 +61,7 @@ void disp_spi_init(void)
         .queue_size=7,
         .pre_cb=disp_spi_pre_transfer_callback,
         .post_cb=NULL,
-        .flags=SPI_DEVICE_NO_DUMMY
+        //.flags=SPI_DEVICE_NO_DUMMY
     };
 
     //Initialize the SPI bus
