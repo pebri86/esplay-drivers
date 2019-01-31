@@ -284,7 +284,7 @@ void set_rom_name_settings(char* value)
 int8_t get_volume_settings()
 {
     // TODO: Move to header
-    int result = -1;
+    int result = 1;
 
     // Open
     nvs_handle my_handle;

@@ -10,13 +10,12 @@
 #include "display.h"
 
 #define NES_FRAME_WIDTH 256
-#define NES_FRAME_HEIGHT 240
+#define NES_FRAME_HEIGHT 224
 
 #define GB_FRAME_WIDTH 160
 #define GB_FRAME_HEIGHT 144
 
 #define AVERAGE(a, b) ( ((((a) ^ (b)) & 0xf7deU) >> 1) + ((a) & (b)) )
-#define ABS(a)          ( (a) >= 0 ? (a) : -(a) )
 
 #define LINE_BUFFERS (2)
 #define LINE_COUNT   (4)
@@ -51,7 +50,7 @@ static uint16_t getPixelNes(const uint8_t * data[], int x, int y, int w1, int h1
     return AVERAGE(a,b);
 }
 
-void write_nes_frame(const uint8_t * data[])
+void write_nes_frame(const uint8_t * data)
 {
     short x,y;
     int sending_line=-1;
@@ -72,34 +71,24 @@ void write_nes_frame(const uint8_t * data[])
     }
     else
     {
-        /* maintaine output aspect ratio while scaling */
-        #if CONFIG_HW_LCD_TYPE == LCD_TYPE_ST
-        int outputHeight = LCD_HEIGHT;
-        int outputWidth = NES_FRAME_WIDTH + (LCD_HEIGHT - NES_FRAME_HEIGHT);
-        int xpos = (LCD_WIDTH - outputWidth) / 2;
         /* place output on center of lcd */
-        #elif CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI
         int outputHeight = NES_FRAME_HEIGHT;
         int outputWidth = NES_FRAME_WIDTH;
         int xpos = (LCD_WIDTH - outputWidth) / 2;
-        #endif
+        int ypos = (LCD_HEIGHT - outputHeight) / 2;
 
-        for (y=0; y<outputHeight; y+=LINE_COUNT) 
+        for (y=ypos; y<outputHeight; y+=LINE_COUNT) 
         {
             for (int i = 0; i < LINE_COUNT; ++i)
             {
                 if((y + i) >= outputHeight) break;
 
                 int index = (i) * outputWidth;
+                int bufferIndex = ((y + i) * NES_FRAME_WIDTH);
 
                 for (x=0; x<outputWidth; x++)
                 {
-                    #if CONFIG_HW_LCD_TYPE == LCD_TYPE_ST /* scale if lcd st7735 in use */
-                    uint16_t sample = getPixelNes(data, x, (y+i), NES_FRAME_WIDTH, NES_FRAME_HEIGHT, outputWidth, outputHeight);
-                    #elif CONFIG_HW_LCD_TYPE == LCD_TYPE_ILI /* otherwise just send pixel to lcd */
-                    uint16_t sample = myPalette[(unsigned char) (data[(y+i)][x])];
-                    #endif
-                    line[calc_line][index++] = ((sample >> 8) | ((sample) << 8));
+                    line[calc_line][index++] = myPalette[(unsigned char) (data[bufferIndex++])];
                 }
             }
             if (sending_line!=-1) send_line_finish();
