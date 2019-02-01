@@ -8,6 +8,8 @@
 #include "soc/gpio_struct.h"
 #include "driver/gpio.h"
 #include "display.h"
+#include "hourglass_empty_black_48dp.h"
+#include "image_splash.h"
 
 #define NES_FRAME_WIDTH 256
 #define NES_FRAME_HEIGHT 224
@@ -151,7 +153,7 @@ void write_gb_frame(const uint16_t * data, bool scale)
             calc_line=(calc_line==1)?0:1;
             send_lines_ext(y, 0, LCD_WIDTH, line[sending_line], 1);
             }
-        send_line_finish(); 
+        send_line_finish();
     }
     else
     {
@@ -211,6 +213,65 @@ void write_gb_frame(const uint16_t * data, bool scale)
             send_line_finish();
         }
     }
+}
+
+void write_frame_rectangleLE(short left, short top, short width, short height, uint16_t* buffer)
+{
+    short x, y;
+    int sending_line=-1;
+    int calc_line=0;
+
+    if (left < 0 || top < 0) abort();
+    if (width < 1 || height < 1) abort();
+    if (buffer == NULL)
+    {
+        for (y=0; y<LCD_HEIGHT; ++y) 
+        {
+            for (x=0; x<LCD_WIDTH; x++)
+            {
+                line[calc_line][x] = 0;
+            }
+
+            if (sending_line!=-1) send_line_finish();
+            sending_line=calc_line;
+            calc_line=(calc_line==1)?0:1;
+            send_lines_ext(y, 0, LCD_WIDTH, line[sending_line], 1);
+        }
+
+        send_line_finish();
+    }
+    else
+    {
+        for (y = 0; y < height; y++)
+        {
+            for (int i = 0; i < width; ++i)
+            {
+                uint16_t pixel = buffer[y * width + i];
+                line[calc_line][i] = = pixel << 8 | pixel >> 8;
+            }
+
+            if (sending_line!=-1) send_line_finish();
+            sending_line=calc_line;
+            calc_line=(calc_line==1)?0:1;
+            send_lines_ext(left, top, width, 1);
+        }
+    }
+    
+    send_line_finish();
+}
+
+void display_show_hourglass()
+{
+    write_frame_rectangleLE((LCD_WIDTH / 2) - (image_hourglass_empty_black_48dp.width / 2),
+        (LCD_HEIGHT / 2) - (image_hourglass_empty_black_48dp.height / 2),
+        image_hourglass_empty_black_48dp.width,
+        image_hourglass_empty_black_48dp.height,
+        image_hourglass_empty_black_48dp.pixel_data);
+}
+
+void display_show_splash()
+{
+    write_frame_rectangleLE(0, 0, image_splash.width, image_splash.height, image_splash.pixel_data);
 }
 
 void display_init()
