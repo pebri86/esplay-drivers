@@ -242,18 +242,23 @@ void write_frame_rectangleLE(short left, short top, short width, short height, u
     }
     else
     {
-        for (y = 0; y < height; y++)
+        short xv;
+        short yv = 0;
+        for (y = top; y < top+height; y++)
         {
-            for (int i = 0; i < width; ++i)
+            xv = 0;
+            for (int i = left; i < left+width; ++i)
             {
-                uint16_t pixel = buffer[y * width + i];
-                line[calc_line][i] = = pixel << 8 | pixel >> 8;
+                uint16_t pixel = buffer[yv * width + xv];
+                line[calc_line][xv] = ((pixel << 8) | (pixel >> 8));
+                xv++;
             }
 
             if (sending_line!=-1) send_line_finish();
             sending_line=calc_line;
             calc_line=(calc_line==1)?0:1;
-            send_lines_ext(left, top, width, 1);
+            send_lines_ext(y, left, width, line[sending_line], 1);
+            yv++;
         }
     }
     
