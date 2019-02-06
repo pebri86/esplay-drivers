@@ -327,8 +327,8 @@ void set_volume_settings(int8_t value)
 
 int8_t get_menu_flag_settings()
 {
-    // TODO: Move to header
-    int result = 0;
+    // Default force to menu
+    int result = 1;
 
     // Open
     nvs_handle my_handle;
