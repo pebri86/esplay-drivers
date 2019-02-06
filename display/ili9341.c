@@ -316,6 +316,17 @@ static void ili9341_send_data(void * data, uint16_t length)
 	disp_spi_send(data, length, DATA_ON);
 }
 
+
+void ili9341_backlight_deinit()
+{
+    ledc_fade_func_uninstall();
+    esp_err_t err = ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+    if (err != ESP_OK)
+    {
+        printf("%s: ledc_stop failed.\n", __func__);
+    }
+}
+
 static void backlight_init()
 {
     //configure timer0

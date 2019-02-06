@@ -37,6 +37,7 @@ extern "C" {
 int is_backlight_initialized();
 void backlight_percentage_set(int value);
 void ili9341_init(void);
+void ili9341_backlight_deinit();
 void ili9341_prepare();
 void ili9341_poweroff();
 
