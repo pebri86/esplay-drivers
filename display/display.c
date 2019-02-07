@@ -31,6 +31,11 @@ void set_display_brightness(int percent)
     backlight_percentage_set(percent);
 }
 
+void backlight_deinit()
+{
+    ili9341_backlight_deinit();
+}
+
 void display_prepare(int percent)
 {
     ili9341_prepare();
@@ -242,18 +247,23 @@ void write_frame_rectangleLE(short left, short top, short width, short height, u
     }
     else
     {
-        for (y = 0; y < height; y++)
+        short xv;
+        short yv = 0;
+        for (y = top; y < top+height; y++)
         {
-            for (int i = 0; i < width; ++i)
+            xv = 0;
+            for (int i = left; i < left+width; ++i)
             {
-                uint16_t pixel = buffer[y * width + i];
-                line[calc_line][i] = = pixel << 8 | pixel >> 8;
+                uint16_t pixel = buffer[yv * width + xv];
+                line[calc_line][xv] = ((pixel << 8) | (pixel >> 8));
+                xv++;
             }
 
             if (sending_line!=-1) send_line_finish();
             sending_line=calc_line;
             calc_line=(calc_line==1)?0:1;
-            send_lines_ext(left, top, width, 1);
+            send_lines_ext(y, left, width, line[sending_line], 1);
+            yv++;
         }
     }
     
@@ -272,6 +282,30 @@ void display_show_hourglass()
 void display_show_splash()
 {
     write_frame_rectangleLE(0, 0, image_splash.width, image_splash.height, image_splash.pixel_data);
+}
+
+void display_clear(uint16_t color)
+{
+    int sending_line=-1;
+    int calc_line=0;
+    // clear the buffer
+    for (int i = 0; i < LINE_BUFFERS; ++i)
+    {
+        for (int j = 0; j < LCD_WIDTH * LINE_COUNT; ++j)
+        {
+            line[i][j] = color;
+        }
+    }
+
+    for (int y = 0; y < LCD_HEIGHT; y += LINE_COUNT)
+    {
+        if (sending_line!=-1) send_line_finish();
+        sending_line=calc_line;
+        calc_line=(calc_line==1)?0:1;
+        send_lines_ext(y, 0, LCD_WIDTH, line[sending_line], LINE_COUNT);
+    }
+
+    send_line_finish();
 }
 
 void display_init()
