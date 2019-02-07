@@ -11,6 +11,9 @@
 #include "nvs_flash.h"
 #include "esp_heap_caps.h"
 
+#include "esp_partition.h"
+#include "esp_ota_ops.h"
+
 #include "string.h"
 /*********************
  *      DEFINES
@@ -41,6 +44,23 @@ static const char* NvsKey_MenuFlag = "menu_flag";
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
+void system_application_set(int slot)
+{
+    const esp_partition_t* partition = esp_partition_find_first(
+        ESP_PARTITION_TYPE_APP,
+        ESP_PARTITION_SUBTYPE_APP_OTA_MIN + slot,
+        NULL);
+    if (partition != NULL)
+    {
+        esp_err_t err = esp_ota_set_boot_partition(partition);
+        if (err != ESP_OK)
+        {
+            printf("%s: esp_ota_set_boot_partition failed.\n", __func__);
+            abort();
+        }
+    }
+}
+
 int32_t get_backlight_settings()
 {
     // TODO: Move to header

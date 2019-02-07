@@ -22,10 +22,21 @@ extern "C" {
 /**********************
  *      TYPEDEFS
  **********************/
+typedef enum
+{
+    ESPLAY_VOLUME_LEVEL0 = 0,
+    ESPLAY_VOLUME_LEVEL1 = 1,
+    ESPLAY_VOLUME_LEVEL2 = 2,
+    ESPLAY_VOLUME_LEVEL3 = 3,
+    ESPLAY_VOLUME_LEVEL4 = 4,
+
+    _ODROID_VOLUME_FILLER = 0xffffffff
+} esplay_volume_level;
 
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
+void system_application_set(int slot);
 int32_t get_backlight_settings();
 void set_backlight_settings(int32_t value);
 int8_t get_rom_partition_settings();
